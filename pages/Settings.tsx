@@ -106,12 +106,12 @@ const Settings: React.FC = () => {
                   <span className="font-medium text-sm dark:text-slate-200">离线听书</span>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400">纯本地离线有声书播放器</p>
                 </div>
-                <span className="text-xs bg-primary/10 dark:bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">v1.0.30</span>
+                <span className="text-xs bg-primary/10 dark:bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">v1.0.31</span>
               </div>
             </div>
           </section>
         </div>
-        <p className="text-center text-slate-400 text-[10px] mt-12 mb-12">离线听书 v1.0.30</p>
+        <p className="text-center text-slate-400 text-[10px] mt-12 mb-12">离线听书 v1.0.31</p>
       </main>
     </div>
   );
