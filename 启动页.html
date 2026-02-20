@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>静听 - Splash Screen</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&amp;family=Noto+Sans+SC:wght@300;400;500;700;900&amp;family=Noto+Serif+SC:wght@400;500;700&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2a2a2a",
+                        "brand-blue": "#2563EB",
+                        "brand-dark": "#0F172A",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Noto Serif SC", "Plus Jakarta Sans", "serif"],
+                        "body": ["Noto Sans SC", "Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <style>
+        .splash-grid {
+            display: grid;
+            grid-template-rows: 1fr auto 1fr;
+        }
+
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+    <style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-body transition-colors duration-200 antialiased selection:bg-blue-100 selection:text-blue-900">
+    <main
+        class="relative flex min-h-screen w-full flex-col items-center justify-between overflow-hidden px-6 pt-20 pb-12">
+        <div class="flex-1"></div>
+        <div class="flex flex-col items-center justify-center space-y-6 animate-fade-in z-10">
+            <div
+                class="relative flex items-center justify-center w-28 h-28 rounded-3xl bg-brand-blue shadow-xl shadow-blue-200/50">
+                <span class="material-symbols-outlined text-white text-[56px]"
+                    style="font-variation-settings: 'FILL' 1, 'wght' 600;">
+                    graphic_eq
+                </span>
+                <div
+                    class="absolute inset-0 rounded-3xl bg-gradient-to-tr from-white/10 to-transparent pointer-events-none">
+                </div>
+            </div>
+            <div class="text-center space-y-2 pt-2">
+                <h1 class="text-[40px] font-body font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
+                    静听
+                </h1>
+                <p class="text-brand-blue font-sans tracking-[0.15em] font-medium uppercase text-xs">
+                    Silent Listening
+                </p>
+            </div>
+        </div>
+        <div class="flex-1"></div>
+        <div class="z-10 flex flex-col items-center space-y-2 pb-10 opacity-90">
+            <p class="text-sm font-normal text-slate-500 dark:text-slate-400 tracking-wider">
+                纯粹听书，离线无忧
+            </p>
+            <p class="text-[10px] font-light text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                Pure listening, worry-free offline
+            </p>
+        </div>
+        <div
+            class="absolute -top-[10%] -left-[10%] h-[500px] w-[500px] rounded-full bg-blue-50/50 blur-[100px] dark:bg-blue-900/10 pointer-events-none">
+        </div>
+        <div
+            class="absolute top-[20%] -right-[10%] h-[400px] w-[400px] rounded-full bg-slate-50 blur-[80px] dark:bg-slate-800/20 pointer-events-none">
+        </div>
+        <div
+            class="absolute -bottom-[10%] left-[20%] h-[400px] w-[400px] rounded-full bg-blue-50/30 blur-[90px] dark:bg-blue-900/10 pointer-events-none">
+        </div>
+    </main>
+
+</body>
+
+</html>
