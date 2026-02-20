@@ -25,6 +25,13 @@ const Player: React.FC = () => {
 
     const book = books.find(b => b.id === id) || null;
 
+    // Sync route with player state (handle cross-book auto-play)
+    useEffect(() => {
+        if (playerInfo.state !== 'idle' && playerInfo.bookId && playerInfo.bookId !== id) {
+            navigate(`/player/${playerInfo.bookId}`, { replace: true });
+        }
+    }, [playerInfo.bookId, id, navigate, playerInfo.state]);
+
     useEffect(() => {
         if (!book && books.length > 0) navigate(-1);
     }, [book, books.length]);

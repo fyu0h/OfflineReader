@@ -2,6 +2,35 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import * as db from '../services/db';
 import { audioPlayer, PlayerInfo, SkipSettings } from '../services/audioPlayer';
 import type { BookRecord, ChapterRecord, ProgressRecord, StatRecord } from '../services/db';
+import { naturalCompareTitle } from '../utils';
+
+// Helper to find the next book in the series based on natural title sorting
+function findNextBookInSeries(allBooks: BookRecord[], currentBook: BookRecord): BookRecord | null {
+  if (allBooks.length <= 1) return null;
+
+  // 1. Sort all books naturally by title
+  const sorted = [...allBooks].sort((a, b) => naturalCompareTitle(a.title, b.title));
+
+  // 2. Find index of current book
+  const idx = sorted.findIndex(b => b.id === currentBook.id);
+  if (idx === -1 || idx === sorted.length - 1) return null;
+
+  const nextBook = sorted[idx + 1];
+
+  // 3. Heuristic: Check if they appear to belong to the same series
+  // Simple check: same prefix before first underscore, or first 3 characters
+  const getPrefix = (t: string) => t.split('_')[0];
+  if (getPrefix(currentBook.title) === getPrefix(nextBook.title)) {
+    return nextBook;
+  }
+
+  // Also check if the current title is a substring of the next or vice versa (common for sequels)
+  if (nextBook.title.startsWith(currentBook.title.substring(0, 4))) {
+    return nextBook;
+  }
+
+  return null;
+}
 
 export interface NativeFileInfo {
   name: string;
@@ -51,6 +80,7 @@ interface AppActions {
   reorderChapters: (bookId: string, chapters: ChapterRecord[]) => Promise<void>;
   setSkipSettings: (settings: Partial<SkipSettings>) => void;
   hideBookProgress: (bookId: string) => Promise<void>;
+  resetBookProgress: (bookId: string) => Promise<void>;
 }
 
 const AppStateContext = createContext<AppState>({
@@ -165,11 +195,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBooks(allBooks);
   }, []);
 
+  // Keep a ref to the latest books list for use in onChapterEnd callback
+  const booksRef = useRef<BookRecord[]>([]);
+  useEffect(() => { booksRef.current = books; }, [books]);
+
   useEffect(() => {
     refreshBooks().then(() => setLoading(false));
   }, [refreshBooks]);
 
-  // Auto-advance to next chapter
+  // Auto-advance to next chapter, or next book in series
   useEffect(() => {
     audioPlayer.setOnChapterEnd(async () => {
       const info = audioPlayer.getInfo();
@@ -177,10 +211,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const ids = audioPlayer.getChapterIds();
       const nextIdx = info.chapterIndex + 1;
       if (nextIdx < ids.length) {
+        // Next chapter in current book
         await audioPlayer.loadChapter(info.bookId, ids[nextIdx], ids, 0);
         await audioPlayer.play();
       } else {
-        // Book finished
+        // Book finished - try to find next book in the series
+        const currentBook = booksRef.current.find(b => b.id === info.bookId);
+        if (currentBook) {
+          const nextBook = findNextBookInSeries(booksRef.current, currentBook);
+          if (nextBook) {
+            // Auto-play next book from the beginning
+            const chapters = await db.getChaptersByBook(nextBook.id);
+            chapters.sort((a, b) => a.order - b.order);
+            if (chapters.length > 0) {
+              const chapterIds = chapters.map(c => c.id);
+              await audioPlayer.loadChapter(nextBook.id, chapterIds[0], chapterIds, 0);
+              await audioPlayer.play();
+              // Update updatedAt for the new book
+              nextBook.updatedAt = Date.now();
+              await db.saveBook(nextBook);
+              return;
+            }
+          }
+        }
+        // No next book found, just pause
         audioPlayer.pause();
       }
     });
@@ -557,6 +611,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await db.saveProgress({ ...p, hidden: true });
         await refreshBooks();
       }
+    },
+    resetBookProgress: async (bookId) => {
+      await db.deleteBookProgress(bookId);
+      await refreshBooks();
     },
   };
 

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAppState, useAppActions } from '../contexts/AppContext';
-import { getPlaceholderColor } from '../utils';
+import { getPlaceholderColor, naturalCompareTitle } from '../utils';
 import { formatDurationChinese } from '../types';
 import type { ProgressRecord } from '../services/db';
 
@@ -70,7 +70,7 @@ const Library: React.FC = () => {
       result = result.filter(b => !progressMap[b.id]?.position);
     }
     switch (sortKey) {
-      case 'title': result.sort((a, b) => a.title.localeCompare(b.title, 'zh')); break;
+      case 'title': result.sort((a, b) => naturalCompareTitle(a.title, b.title)); break;
       case 'author': result.sort((a, b) => a.author.localeCompare(b.author, 'zh')); break;
       default: result.sort((a, b) => b.updatedAt - a.updatedAt);
     }
@@ -201,6 +201,15 @@ const Library: React.FC = () => {
                         <button className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2" onClick={(e) => { e.stopPropagation(); actions.playBook(book.id).then(() => navigate(`/player/${book.id}`)); setActiveMenuId(null); }}>
                           <span className="material-symbols-outlined text-[18px]">play_arrow</span>开始播放
                         </button>
+                        {progressMap[book.id] && (
+                          <button className="w-full text-left px-4 py-3 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 border-t border-slate-50 dark:border-slate-700" onClick={(e) => {
+                            e.stopPropagation();
+                            actions.resetBookProgress(book.id);
+                            setActiveMenuId(null);
+                          }}>
+                            <span className="material-symbols-outlined text-[18px]">history</span>恢复未播放
+                          </button>
+                        )}
                         <button className="w-full text-left px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2 border-t border-slate-50 dark:border-slate-700" onClick={(e) => {
                           e.stopPropagation();
                           setActiveMenuId(null);

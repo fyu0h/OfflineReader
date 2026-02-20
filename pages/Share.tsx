@@ -5,7 +5,6 @@ import { getPlaceholderColor } from '../utils';
 import { ThemeContext } from '../App';
 import type { StatRecord, ProgressRecord, BookRecord } from '../services/db';
 import html2canvas from 'html2canvas';
-import { Share as CapShare } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
 const Share: React.FC = () => {
@@ -15,11 +14,13 @@ const Share: React.FC = () => {
   const actions = useAppActions();
   const [stats, setStats] = useState<StatRecord[]>([]);
   const [allProgress, setAllProgress] = useState<ProgressRecord[]>([]);
-  const reportRef = useRef<HTMLElement>(null);
+  const reportRef = useRef<HTMLDivElement>(null);
   const [isCapturing, setIsCapturing] = useState(false);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    const sc = document.querySelector('.scroll-container');
+    if (sc) sc.scrollTo(0, 0);
+    else window.scrollTo(0, 0);
     actions.getStats().then(setStats);
     actions.getAllProgress().then(setAllProgress);
   }, []);
@@ -60,7 +61,6 @@ const Share: React.FC = () => {
     const avgMinutesCount = activeDaysCount > 0 ? Math.round(totalMin / activeDaysCount) : 0;
 
     let finishedBooksCount = 0;
-    // Simple mock calculation logic for finished books
     finishedBooksCount = Math.floor(allProgress.length / 3) || 0;
 
     let mostListenedBook: { book: BookRecord, minutes: number } | null = null;
@@ -83,46 +83,88 @@ const Share: React.FC = () => {
     };
   }, [stats, allProgress, books]);
 
-  const handleShare = async () => {
+  const handleSaveImage = async () => {
     if (!reportRef.current) return;
 
     try {
       setIsCapturing(true);
 
-      // Add a slight delay to allow React to render any dynamic states before capturing
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // 1. Check/Request permissions if on native platform
+      if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform()) {
+        const permStatus = await Filesystem.checkPermissions();
+        if (permStatus.publicStorage !== 'granted') {
+          const reqStatus = await Filesystem.requestPermissions();
+          if (reqStatus.publicStorage !== 'granted') {
+            alert('需要存储权限才能保存图片，请在系统设置中开启');
+            setIsCapturing(false);
+            return;
+          }
+        }
+      }
 
+      // 2. Extra stabilization wait
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // 3. Generate Canvas
       const canvas = await html2canvas(reportRef.current, {
-        scale: 2, // High resolution
+        scale: 2,
         useCORS: true,
         backgroundColor: isDark ? '#0f172a' : '#f8fafc',
         logging: false,
+        onclone: (clonedDoc) => {
+          // Ensure fonts are loaded or adjustments made in clone if needed
+          const el = clonedDoc.querySelector('#report-container');
+          if (el) (el as HTMLElement).style.borderRadius = '0';
+        }
       });
 
-      const base64Data = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
-      const fileName = `audiostat_${Date.now()}.jpg`;
+      const blob = await new Promise<Blob>((resolve) =>
+        canvas.toBlob((b) => resolve(b!), 'image/png', 1)
+      );
+      const fileName = `audiostat_${Date.now()}.png`;
 
+      // 4. Try Web Share API (Files) first - highly successful on modern Android
+      if (navigator.share && navigator.canShare) {
+        const file = new File([blob], fileName, { type: 'image/png' });
+        const shareData = {
+          files: [file],
+          title: '我的听书成就',
+          text: '这是我的本月听书报告，来看看吧！'
+        };
+        if (navigator.canShare(shareData)) {
+          try {
+            await navigator.share(shareData);
+            return; // Success!
+          } catch (shareErr: any) {
+            if (shareErr.name === 'AbortError') return; // User cancelled
+            console.warn('Navigator share failed, falling back to direct save', shareErr);
+          }
+        }
+      }
+
+      // 5. Fallback/Manual Save: Filesystem Save to Documents
       if (typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform()) {
+        const base64 = canvas.toDataURL('image/png').split(',')[1];
+
+        // Android 10+ uses scoped storage, Directory.Documents is generally safer than raw path
         const result = await Filesystem.writeFile({
           path: fileName,
-          data: base64Data,
-          directory: Directory.Cache
+          data: base64,
+          directory: Directory.Documents, // Using Documents instead of custom path string
         });
 
-        await CapShare.share({
-          title: '我的收听报告',
-          url: result.uri,
-        });
+        alert(`图片已成功保存至文档文件夹\n文件名: ${fileName}`);
       } else {
-        // Fallback for Web: Download the image
+        // Web fallback: download
         const link = document.createElement('a');
         link.download = fileName;
-        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.href = URL.createObjectURL(blob);
         link.click();
+        URL.revokeObjectURL(link.href);
       }
-    } catch (e) {
-      console.error('Failed to generate image', e);
-      alert('生成分享图片失败，请稍后重试');
+    } catch (e: any) {
+      console.error('Failed to generate/save image', e);
+      alert(`生成图片失败: ${e.message || '未知错误'}`);
     } finally {
       setIsCapturing(false);
     }
@@ -132,7 +174,7 @@ const Share: React.FC = () => {
     <div className="bg-[#f8fafc] dark:bg-[#0f172a] min-h-screen relative font-sans ios-blur transition-colors duration-300">
 
       {/* Header - Not included in screenshot if we don't want it, but the ref includes the main element. Let's include the header in the screenshot so we wrap everything in the ref */}
-      <div ref={reportRef as any} className="pb-32 bg-[#f8fafc] dark:bg-[#0f172a] min-h-screen">
+      <div ref={reportRef} className="pb-32 bg-[#f8fafc] dark:bg-[#0f172a] min-h-screen">
         <header className="w-full px-6 py-6 flex items-center justify-between pointer-events-auto">
           {/* Hide the back button in the screenshot by toggling opacity */}
           <button
@@ -146,7 +188,7 @@ const Share: React.FC = () => {
         </header>
 
         {/* Main Content */}
-        <main className="max-w-md mx-auto pt-4 px-5 space-y-4">
+        <main className="w-full pt-4 px-5 space-y-4">
 
           {/* Total Time Card */}
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] relative">
@@ -254,15 +296,15 @@ const Share: React.FC = () => {
         </main>
       </div>
 
-      {/* Floating Action Button - Positioned fixed across the viewport so it never moves, and hidden during capture */}
+      {/* Floating Action Button */}
       {!isCapturing && (
-        <div className="fixed bottom-0 left-0 w-full px-6 pb-12 pt-4 bg-gradient-to-t from-[#f8fafc] via-[#f8fafc]/90 to-transparent dark:from-[#0f172a] dark:via-[#0f172a]/90 pointer-events-none flex flex-col items-center gap-5 z-[60]">
+        <div className="fixed bottom-0 left-0 w-full px-6 pb-12 pt-4 bg-gradient-to-t from-[#f8fafc] via-[#f8fafc]/90 to-transparent dark:from-[#0f172a] dark:via-[#0f172a]/90 pointer-events-none flex flex-col items-center z-[60]">
           <button
-            onClick={handleShare}
+            onClick={handleSaveImage}
             className="w-full max-w-[320px] bg-gradient-to-r from-[#3b5bdb] to-[#5c7cfa] hover:from-[#364fc7] hover:to-[#4c6ef5] text-white rounded-2xl py-4 flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(59,91,219,0.3)] dark:shadow-[0_8px_20px_rgba(59,91,219,0.2)] transform active:scale-95 transition-all pointer-events-auto"
           >
-            <span className="material-symbols-outlined text-[20px]">share</span>
-            <span className="font-bold tracking-widest text-sm">分享我的成就</span>
+            <span className="material-symbols-outlined text-[20px]">save</span>
+            <span className="font-bold tracking-widest text-sm">保存为图片</span>
           </button>
         </div>
       )}

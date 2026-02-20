@@ -180,6 +180,7 @@ export const getAudioBlob = (chapterId: string): Promise<{ chapterId: string; bl
 // === Progress ===
 export const getProgress = (bookId: string) => getByKey<ProgressRecord>('progress', bookId);
 export const saveProgress = (p: ProgressRecord) => put('progress', p);
+export const deleteBookProgress = (bookId: string) => deleteByKey('progress', bookId);
 export const getAllProgress = () => getAll<ProgressRecord>('progress');
 
 // === Stats ===
