@@ -17,6 +17,7 @@ interface MediaControlPlugin {
   pause(): Promise<void>;
   seekTo(opts: { position: number }): Promise<void>;
   setSpeed(opts: { speed: number }): Promise<void>;
+  setVoiceEnhance(opts: { enabled: boolean }): Promise<void>;
   seekToChapter(opts: { index: number }): Promise<void>;
   getState(): Promise<{ isPlaying: boolean; position: number; duration: number; index: number }>;
   stopService(): Promise<void>;
@@ -49,6 +50,7 @@ export interface PlayerInfo {
   speed: number;
   sleepTimerEnd: number | null;
   skipSettings: SkipSettings;
+  voiceEnhance: boolean;
 }
 
 type Listener = (info: PlayerInfo) => void;
@@ -71,6 +73,7 @@ class AudioPlayer {
   private _chapterIds: string[] = [];
   private _skipSettings: SkipSettings = { enabled: false, introSeconds: 30, outroSeconds: 15 };
   private _skipOutroTriggered: boolean = false; // prevent repeated triggers
+  private _voiceEnhance: boolean = false;
   private _onChapterEnd: (() => void) | null = null;
   private _onVoiceCommand: VoiceCommandHandler | null = null;
 
@@ -83,6 +86,7 @@ class AudioPlayer {
     this.audio = new Audio();
     this.audio.preload = 'auto';
     this.loadSkipSettings();
+    this.loadVoiceEnhance();
 
     if (!isNative) {
       // Web-only: use HTMLAudioElement events
@@ -112,6 +116,15 @@ class AudioPlayer {
           introSeconds: typeof parsed.introSeconds === 'number' ? parsed.introSeconds : 30,
           outroSeconds: typeof parsed.outroSeconds === 'number' ? parsed.outroSeconds : 15,
         };
+      }
+    } catch { }
+  }
+
+  private loadVoiceEnhance() {
+    try {
+      const saved = localStorage.getItem('voiceEnhance');
+      if (saved) {
+        this._voiceEnhance = saved === 'true';
       }
     } catch { }
   }
@@ -259,6 +272,8 @@ class AudioPlayer {
         coverImage: book?.coverImage || '',
       });
 
+      await MediaControl.setVoiceEnhance({ enabled: this._voiceEnhance });
+
       if (!autoPlay) {
         // loadPlaylist always starts playing in ExoPlayer; pause immediately
         await MediaControl.pause();
@@ -301,6 +316,7 @@ class AudioPlayer {
       speed: this._speed,
       sleepTimerEnd: this._sleepTimerEnd,
       skipSettings: { ...this._skipSettings },
+      voiceEnhance: this._voiceEnhance,
     };
   }
 
@@ -360,6 +376,7 @@ class AudioPlayer {
         speed: this._speed,
         coverImage: book?.coverImage || '',
       });
+      await MediaControl.setVoiceEnhance({ enabled: this._voiceEnhance });
     } else {
       // Web fallback
       this.audio.pause();
@@ -448,6 +465,15 @@ class AudioPlayer {
       MediaControl.setSpeed({ speed });
     } else {
       this.audio.playbackRate = speed;
+    }
+    this.notify();
+  }
+
+  setVoiceEnhance(enabled: boolean) {
+    this._voiceEnhance = enabled;
+    localStorage.setItem('voiceEnhance', enabled ? 'true' : 'false');
+    if (isNative && MediaControl) {
+      MediaControl.setVoiceEnhance({ enabled });
     }
     this.notify();
   }

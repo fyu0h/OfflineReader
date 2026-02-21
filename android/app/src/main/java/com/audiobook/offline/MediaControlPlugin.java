@@ -267,6 +267,18 @@ public class MediaControlPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void setVoiceEnhance(PluginCall call) {
+        boolean enabled = call.getBoolean("enabled", false);
+        mainHandler.post(() -> {
+            PlaybackService svc = PlaybackService.getInstance();
+            if (svc != null) {
+                svc.setVoiceEnhanceEnabled(enabled);
+            }
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
     public void getState(PluginCall call) {
         mainHandler.post(() -> {
             JSObject result = new JSObject();

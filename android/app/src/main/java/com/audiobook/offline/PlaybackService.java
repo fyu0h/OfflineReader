@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.media.audiofx.Equalizer;
 import android.os.Build;
 import android.util.Log;
 import androidx.annotation.Nullable;
@@ -31,6 +32,8 @@ public class PlaybackService extends MediaSessionService {
     private static final int NOTIFICATION_ID = 1;
     private MediaSession mediaSession = null;
     private static PlaybackService instance;
+    private Equalizer equalizer;
+    private boolean isVoiceEnhanceEnabled = false;
 
     public interface StateListener {
         void onPlayingChanged(boolean isPlaying);
@@ -101,6 +104,11 @@ public class PlaybackService extends MediaSessionService {
 
         player.addListener(new Player.Listener() {
             @Override
+            public void onAudioSessionIdChanged(int audioSessionId) {
+                setupEqualizer(audioSessionId);
+            }
+
+            @Override
             public void onIsPlayingChanged(boolean isPlaying) {
                 if (stateListener != null)
                     stateListener.onPlayingChanged(isPlaying);
@@ -159,6 +167,61 @@ public class PlaybackService extends MediaSessionService {
 
     public Player getPlayer() {
         return mediaSession != null ? mediaSession.getPlayer() : null;
+    }
+
+    private void setupEqualizer(int audioSessionId) {
+        if (audioSessionId == C.AUDIO_SESSION_ID_UNSET)
+            return;
+
+        if (equalizer != null) {
+            equalizer.release();
+            equalizer = null;
+        }
+
+        try {
+            equalizer = new Equalizer(0, audioSessionId);
+            applyVoiceEnhance(isVoiceEnhanceEnabled);
+        } catch (Exception e) {
+            Log.e("PlaybackService", "Failed to init Equalizer: " + e.getMessage());
+        }
+    }
+
+    public void setVoiceEnhanceEnabled(boolean enabled) {
+        this.isVoiceEnhanceEnabled = enabled;
+        applyVoiceEnhance(enabled);
+    }
+
+    public boolean isVoiceEnhanceEnabled() {
+        return this.isVoiceEnhanceEnabled;
+    }
+
+    private void applyVoiceEnhance(boolean enabled) {
+        if (equalizer == null)
+            return;
+        try {
+            if (!enabled) {
+                equalizer.setEnabled(false);
+                return;
+            }
+
+            short bands = equalizer.getNumberOfBands();
+            short maxEQLevel = equalizer.getBandLevelRange()[1];
+
+            for (short i = 0; i < bands; i++) {
+                int centerFreq = Math.abs(equalizer.getCenterFreq(i)); // in milliHertz
+                // Human voice range ~ 300Hz to 4000Hz (300,000 mHz to 4,000,000 mHz)
+                if (centerFreq >= 300000 && centerFreq <= 4000000) {
+                    // Boost voice frequencies
+                    equalizer.setBandLevel(i, maxEQLevel);
+                } else {
+                    // Keep others flat
+                    equalizer.setBandLevel(i, (short) 0);
+                }
+            }
+            equalizer.setEnabled(true);
+        } catch (Exception e) {
+            Log.e("PlaybackService", "Failed to apply Equalizer: " + e.getMessage());
+        }
     }
 
     private void createNotificationChannel() {

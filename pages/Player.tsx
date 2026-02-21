@@ -213,15 +213,15 @@ const Player: React.FC = () => {
                         </button>
                     </div>
 
-                    {/* Bottom action buttons: 4-grid */}
-                    <div className="grid grid-cols-4 gap-2 items-center mb-4">
+                    {/* Bottom action buttons: 5-grid */}
+                    <div className="grid grid-cols-5 gap-1 items-center mb-4">
                         {/* Speed */}
                         <button
                             className="flex flex-col items-center gap-1 active:opacity-50 transition-opacity"
                             onClick={(e) => { e.stopPropagation(); setActivePanel(activePanel === 'speed' ? 'none' : 'speed'); }}
                         >
                             <span className={`material-symbols-outlined text-xl ${activePanel === 'speed' || playerInfo.speed !== 1 ? 'text-primary' : 'text-slate-400'}`}>speed</span>
-                            <span className={`text-[10px] font-bold tracking-tight ${activePanel === 'speed' || playerInfo.speed !== 1 ? 'text-primary' : 'text-slate-400'}`}>{playerInfo.speed}x</span>
+                            <span className={`text-[10px] font-bold tracking-tight px-0.5 truncate ${activePanel === 'speed' || playerInfo.speed !== 1 ? 'text-primary' : 'text-slate-400'}`}>{playerInfo.speed}x</span>
                         </button>
                         {/* Skip */}
                         <button
@@ -229,7 +229,7 @@ const Player: React.FC = () => {
                             onClick={(e) => { e.stopPropagation(); setActivePanel(activePanel === 'skip' ? 'none' : 'skip'); }}
                         >
                             <span className={`material-symbols-outlined text-xl ${activePanel === 'skip' || skip.enabled ? 'text-primary' : 'text-slate-400'}`}>fast_forward</span>
-                            <span className={`text-[10px] font-bold tracking-tight ${activePanel === 'skip' || skip.enabled ? 'text-primary' : 'text-slate-400'}`}>跳过设置</span>
+                            <span className={`text-[10px] font-bold tracking-tight px-0.5 truncate w-full text-center ${activePanel === 'skip' || skip.enabled ? 'text-primary' : 'text-slate-400'}`}>跳过设置</span>
                         </button>
                         {/* Timer */}
                         <button
@@ -237,8 +237,18 @@ const Player: React.FC = () => {
                             onClick={(e) => { e.stopPropagation(); setActivePanel(activePanel === 'timer' ? 'none' : 'timer'); }}
                         >
                             <span className={`material-symbols-outlined text-xl ${activePanel === 'timer' || remainingSleep !== null ? 'text-primary' : 'text-slate-400'}`}>timer</span>
-                            <span className={`text-[10px] font-bold tracking-tight ${activePanel === 'timer' || remainingSleep !== null ? 'text-primary' : 'text-slate-400'}`}>
-                                {remainingSleep !== null ? `${remainingSleep}分钟` : '睡眠定时'}
+                            <span className={`text-[10px] font-bold tracking-tight px-0.5 truncate w-full text-center ${activePanel === 'timer' || remainingSleep !== null ? 'text-primary' : 'text-slate-400'}`}>
+                                {remainingSleep !== null ? `${remainingSleep}分` : '睡眠'}
+                            </span>
+                        </button>
+                        {/* Voice Enhance */}
+                        <button
+                            className="flex flex-col items-center gap-1 active:opacity-50 transition-opacity"
+                            onClick={(e) => { e.stopPropagation(); actions.setVoiceEnhance(!playerInfo.voiceEnhance); }}
+                        >
+                            <span className={`material-symbols-outlined text-xl ${playerInfo.voiceEnhance ? 'text-primary' : 'text-slate-400'}`}>record_voice_over</span>
+                            <span className={`text-[10px] font-bold tracking-tight px-0.5 truncate w-full text-center ${playerInfo.voiceEnhance ? 'text-primary' : 'text-slate-400'}`}>
+                                人声增强
                             </span>
                         </button>
                         {/* Chapter list */}
@@ -247,7 +257,7 @@ const Player: React.FC = () => {
                             onClick={(e) => { e.stopPropagation(); navigate(`/episodes/${book.id}`); }}
                         >
                             <span className="material-symbols-outlined text-xl text-slate-400">list_alt</span>
-                            <span className="text-[10px] font-bold text-slate-400 tracking-tight">章节列表</span>
+                            <span className="text-[10px] font-bold text-slate-400 tracking-tight px-0.5 truncate w-full text-center">章节</span>
                         </button>
                     </div>
                 </div>
