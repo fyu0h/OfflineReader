@@ -18,6 +18,7 @@ interface MediaControlPlugin {
   seekTo(opts: { position: number }): Promise<void>;
   setSpeed(opts: { speed: number }): Promise<void>;
   setVoiceEnhance(opts: { enabled: boolean }): Promise<void>;
+  setVolumeNormalization(opts: { enabled: boolean }): Promise<void>;
   seekToChapter(opts: { index: number }): Promise<void>;
   getState(): Promise<{ isPlaying: boolean; position: number; duration: number; index: number }>;
   stopService(): Promise<void>;
@@ -51,6 +52,7 @@ export interface PlayerInfo {
   sleepTimerEnd: number | null;
   skipSettings: SkipSettings;
   voiceEnhance: boolean;
+  volumeNormalization: boolean;
 }
 
 type Listener = (info: PlayerInfo) => void;
@@ -74,6 +76,7 @@ class AudioPlayer {
   private _skipSettings: SkipSettings = { enabled: false, introSeconds: 30, outroSeconds: 15 };
   private _skipOutroTriggered: boolean = false; // prevent repeated triggers
   private _voiceEnhance: boolean = false;
+  private _volumeNormalization: boolean = false;
   private _onChapterEnd: (() => void) | null = null;
   private _onVoiceCommand: VoiceCommandHandler | null = null;
 
@@ -87,6 +90,7 @@ class AudioPlayer {
     this.audio.preload = 'auto';
     this.loadSkipSettings();
     this.loadVoiceEnhance();
+    this.loadVolumeNormalization();
 
     if (!isNative) {
       // Web-only: use HTMLAudioElement events
@@ -125,6 +129,15 @@ class AudioPlayer {
       const saved = localStorage.getItem('voiceEnhance');
       if (saved) {
         this._voiceEnhance = saved === 'true';
+      }
+    } catch { }
+  }
+
+  private loadVolumeNormalization() {
+    try {
+      const saved = localStorage.getItem('volumeNormalization');
+      if (saved) {
+        this._volumeNormalization = saved === 'true';
       }
     } catch { }
   }
@@ -273,6 +286,7 @@ class AudioPlayer {
       });
 
       await MediaControl.setVoiceEnhance({ enabled: this._voiceEnhance });
+      await MediaControl.setVolumeNormalization({ enabled: this._volumeNormalization });
 
       if (!autoPlay) {
         // loadPlaylist always starts playing in ExoPlayer; pause immediately
@@ -317,6 +331,7 @@ class AudioPlayer {
       sleepTimerEnd: this._sleepTimerEnd,
       skipSettings: { ...this._skipSettings },
       voiceEnhance: this._voiceEnhance,
+      volumeNormalization: this._volumeNormalization,
     };
   }
 
@@ -377,6 +392,7 @@ class AudioPlayer {
         coverImage: book?.coverImage || '',
       });
       await MediaControl.setVoiceEnhance({ enabled: this._voiceEnhance });
+      await MediaControl.setVolumeNormalization({ enabled: this._volumeNormalization });
     } else {
       // Web fallback
       this.audio.pause();
@@ -474,6 +490,15 @@ class AudioPlayer {
     localStorage.setItem('voiceEnhance', enabled ? 'true' : 'false');
     if (isNative && MediaControl) {
       MediaControl.setVoiceEnhance({ enabled });
+    }
+    this.notify();
+  }
+
+  setVolumeNormalization(enabled: boolean) {
+    this._volumeNormalization = enabled;
+    localStorage.setItem('volumeNormalization', enabled ? 'true' : 'false');
+    if (isNative && MediaControl) {
+      MediaControl.setVolumeNormalization({ enabled });
     }
     this.notify();
   }

@@ -213,8 +213,8 @@ const Player: React.FC = () => {
                         </button>
                     </div>
 
-                    {/* Bottom action buttons: 5-grid */}
-                    <div className="grid grid-cols-5 gap-1 items-center mb-4">
+                    {/* Bottom action buttons: 6-grid (2 rows x 3 cols) */}
+                    <div className="grid grid-cols-3 gap-y-3 gap-x-1 items-center mb-4">
                         {/* Speed */}
                         <button
                             className="flex flex-col items-center gap-1 active:opacity-50 transition-opacity"
@@ -249,6 +249,16 @@ const Player: React.FC = () => {
                             <span className={`material-symbols-outlined text-xl ${playerInfo.voiceEnhance ? 'text-primary' : 'text-slate-400'}`}>record_voice_over</span>
                             <span className={`text-[10px] font-bold tracking-tight px-0.5 truncate w-full text-center ${playerInfo.voiceEnhance ? 'text-primary' : 'text-slate-400'}`}>
                                 人声增强
+                            </span>
+                        </button>
+                        {/* Volume Normalization */}
+                        <button
+                            className="flex flex-col items-center gap-1 active:opacity-50 transition-opacity"
+                            onClick={(e) => { e.stopPropagation(); actions.setVolumeNormalization(!playerInfo.volumeNormalization); }}
+                        >
+                            <span className={`material-symbols-outlined text-xl ${playerInfo.volumeNormalization ? 'text-primary' : 'text-slate-400'}`}>graphic_eq</span>
+                            <span className={`text-[10px] font-bold tracking-tight px-0.5 truncate w-full text-center ${playerInfo.volumeNormalization ? 'text-primary' : 'text-slate-400'}`}>
+                                音量均衡
                             </span>
                         </button>
                         {/* Chapter list */}

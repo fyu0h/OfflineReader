@@ -250,7 +250,7 @@ public class MediaControlPlugin extends Plugin {
             PlaybackService svc = PlaybackService.getInstance();
             if (svc != null && svc.getPlayer() != null)
                 svc.getPlayer().setPlaybackParameters(
-                        new PlaybackParameters(speed));
+                        new PlaybackParameters(speed, 1.0f));
             call.resolve();
         });
     }
@@ -273,6 +273,18 @@ public class MediaControlPlugin extends Plugin {
             PlaybackService svc = PlaybackService.getInstance();
             if (svc != null) {
                 svc.setVoiceEnhanceEnabled(enabled);
+            }
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void setVolumeNormalization(PluginCall call) {
+        boolean enabled = call.getBoolean("enabled", false);
+        mainHandler.post(() -> {
+            PlaybackService svc = PlaybackService.getInstance();
+            if (svc != null) {
+                svc.setVolumeNormalizationEnabled(enabled);
             }
             call.resolve();
         });

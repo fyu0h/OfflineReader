@@ -80,6 +80,7 @@ interface AppActions {
   reorderChapters: (bookId: string, chapters: ChapterRecord[]) => Promise<void>;
   setSkipSettings: (settings: Partial<SkipSettings>) => void;
   setVoiceEnhance: (enabled: boolean) => void;
+  setVolumeNormalization: (enabled: boolean) => void;
   hideBookProgress: (bookId: string) => Promise<void>;
   resetBookProgress: (bookId: string) => Promise<void>;
 }
@@ -648,6 +649,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     reorderChapters,
     setSkipSettings: (s) => audioPlayer.setSkipSettings(s),
     setVoiceEnhance: (e) => audioPlayer.setVoiceEnhance(e),
+    setVolumeNormalization: (e) => audioPlayer.setVolumeNormalization(e),
     hideBookProgress: async (bookId) => {
       const p = await db.getProgress(bookId);
       if (p) {

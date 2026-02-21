@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.media.audiofx.DynamicsProcessing;
 import android.media.audiofx.Equalizer;
 import android.os.Build;
 import android.util.Log;
@@ -33,7 +34,9 @@ public class PlaybackService extends MediaSessionService {
     private MediaSession mediaSession = null;
     private static PlaybackService instance;
     private Equalizer equalizer;
+    private DynamicsProcessing dynamicsProcessing;
     private boolean isVoiceEnhanceEnabled = false;
+    private boolean isVolumeNormalizationEnabled = false;
 
     public interface StateListener {
         void onPlayingChanged(boolean isPlaying);
@@ -173,6 +176,11 @@ public class PlaybackService extends MediaSessionService {
         if (audioSessionId == C.AUDIO_SESSION_ID_UNSET)
             return;
 
+        setupEqualizerInstance(audioSessionId);
+        setupDynamicsProcessing(audioSessionId);
+    }
+
+    private void setupEqualizerInstance(int audioSessionId) {
         if (equalizer != null) {
             equalizer.release();
             equalizer = null;
@@ -221,6 +229,72 @@ public class PlaybackService extends MediaSessionService {
             equalizer.setEnabled(true);
         } catch (Exception e) {
             Log.e("PlaybackService", "Failed to apply Equalizer: " + e.getMessage());
+        }
+    }
+
+    private void setupDynamicsProcessing(int audioSessionId) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P)
+            return;
+
+        if (dynamicsProcessing != null) {
+            dynamicsProcessing.release();
+            dynamicsProcessing = null;
+        }
+
+        try {
+            // Build DynamicsProcessing Configuration
+            DynamicsProcessing.Config.Builder builder = new DynamicsProcessing.Config.Builder(
+                    DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                    1, // 1 channel for global processing
+                    true, // Enable PreEQ
+                    1, // 1 band PreEQ
+                    true, // Enable MBC
+                    1, // 1 band MBC
+                    true, // Enable PostEQ
+                    1, // 1 band PostEQ
+                    true // Enable Limiter
+            );
+
+            dynamicsProcessing = new DynamicsProcessing(0, audioSessionId, builder.build());
+
+            // Configure MBC: Multiband Compressor
+            DynamicsProcessing.MbcBand band = dynamicsProcessing.getMbcBandByChannelIndex(0, 0);
+            if (band != null) {
+                band.setThreshold(-30.0f); // voices below -30dB pushed up
+                band.setRatio(4.0f); // 4:1 compression
+                band.setPostGain(15.0f); // +15dB boost
+                dynamicsProcessing.setMbcBandAllChannelsTo(0, band);
+            }
+
+            // Configure Limiter: absolute ceiling to prevent clipping from the +15dB boost
+            DynamicsProcessing.Limiter limiter = dynamicsProcessing.getLimiterByChannelIndex(0);
+            if (limiter != null) {
+                limiter.setThreshold(-2.0f); // absolute ceiling at -2dBFS
+                dynamicsProcessing.setLimiterAllChannelsTo(limiter);
+            }
+
+            applyVolumeNormalization(isVolumeNormalizationEnabled);
+        } catch (Exception e) {
+            Log.e("PlaybackService", "Failed to init DynamicsProcessing: " + e.getMessage());
+        }
+    }
+
+    public void setVolumeNormalizationEnabled(boolean enabled) {
+        this.isVolumeNormalizationEnabled = enabled;
+        applyVolumeNormalization(enabled);
+    }
+
+    public boolean isVolumeNormalizationEnabled() {
+        return this.isVolumeNormalizationEnabled;
+    }
+
+    private void applyVolumeNormalization(boolean enabled) {
+        if (dynamicsProcessing == null)
+            return;
+        try {
+            dynamicsProcessing.setEnabled(enabled);
+        } catch (Exception e) {
+            Log.e("PlaybackService", "Failed to apply VolumeNormalization: " + e.getMessage());
         }
     }
 
