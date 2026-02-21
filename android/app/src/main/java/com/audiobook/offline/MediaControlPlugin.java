@@ -80,6 +80,13 @@ public class MediaControlPlugin extends Plugin {
         });
     }
 
+    // Called from MainActivity to forward Voice Assistant commands to JS
+    public void notifyVoiceCommand(String query) {
+        JSObject data = new JSObject();
+        data.put("query", query != null ? query : "");
+        notifyListeners("voicePlayCommand", data);
+    }
+
     private void startPositionUpdates() {
         stopPositionUpdates();
         positionRunnable = new Runnable() {

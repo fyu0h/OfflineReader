@@ -23,6 +23,8 @@ interface MediaControlPlugin {
   addListener(event: string, fn: (data: any) => void): Promise<PluginListenerHandle>;
 }
 
+export type VoiceCommandHandler = (query: string) => void;
+
 const isNative = Capacitor.isNativePlatform();
 const MediaControl = isNative
   ? registerPlugin<MediaControlPlugin>('MediaControl')
@@ -70,6 +72,7 @@ class AudioPlayer {
   private _skipSettings: SkipSettings = { enabled: false, introSeconds: 30, outroSeconds: 15 };
   private _skipOutroTriggered: boolean = false; // prevent repeated triggers
   private _onChapterEnd: (() => void) | null = null;
+  private _onVoiceCommand: VoiceCommandHandler | null = null;
 
   // Native state (synced from ExoPlayer)
   private _nativePosition: number = 0;
@@ -173,6 +176,13 @@ class AudioPlayer {
       console.error('[AudioPlayer] Native player error:', data.message);
       this._nativePlaying = false;
       this.notify();
+    });
+
+    await MediaControl.addListener('voicePlayCommand', (data: { query: string }) => {
+      console.log('[AudioPlayer] Native voice play command:', data.query);
+      if (this._onVoiceCommand) {
+        this._onVoiceCommand(data.query || '');
+      }
     });
 
     // Service was killed by the system (e.g. during lock screen) and restarted.
@@ -443,6 +453,7 @@ class AudioPlayer {
   }
 
   setOnChapterEnd(fn: () => void) { this._onChapterEnd = fn; }
+  setOnVoiceCommand(fn: VoiceCommandHandler) { this._onVoiceCommand = fn; }
   canGoPrev() { return this._chapterIndex > 0; }
   canGoNext() { return this._chapterIndex < this._totalChapters - 1; }
   getChapterIds() { return this._chapterIds; }

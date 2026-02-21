@@ -238,6 +238,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         audioPlayer.pause();
       }
     });
+
+    // Handle voice play commands natively from MainActivity
+    audioPlayer.setOnVoiceCommand(async (query: string) => {
+      console.log('Received voice command with query:', query);
+
+      // Give time for books to load if just cold started
+      let currentBooks = booksRef.current;
+      if (currentBooks.length === 0) {
+        currentBooks = await db.getAllBooks();
+        currentBooks.sort((a, b) => b.updatedAt - a.updatedAt);
+      }
+
+      if (currentBooks.length > 0) {
+        // Find most recently updated book (likely last played)
+        const targetBook = currentBooks[0];
+
+        // Find the progress or use first chapter
+        const progress = await db.getProgress(targetBook.id);
+        const chapters = await db.getChaptersByBook(targetBook.id);
+        chapters.sort((a, b) => a.order - b.order);
+
+        if (chapters.length > 0) {
+          const ids = chapters.map(c => c.id);
+          const targetChapterId = progress?.chapterId && ids.includes(progress.chapterId)
+            ? progress.chapterId
+            : ids[0];
+          const startPos = progress?.position || 0;
+
+          if (progress?.speed) {
+            audioPlayer.setSpeed(progress.speed);
+          }
+
+          await audioPlayer.loadChapter(targetBook.id, targetChapterId, ids, startPos);
+          await audioPlayer.play();
+
+          targetBook.updatedAt = Date.now();
+          await db.saveBook(targetBook);
+          await refreshBooks();
+        }
+      }
+    });
   }, []);
 
   const importFiles = useCallback(async (files: FileList | File[]): Promise<string> => {
