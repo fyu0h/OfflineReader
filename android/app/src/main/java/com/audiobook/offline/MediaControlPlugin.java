@@ -288,8 +288,7 @@ public class MediaControlPlugin extends Plugin {
         mainHandler.post(() -> {
             PlaybackService svc = PlaybackService.getInstance();
             if (svc != null && svc.getPlayer() != null) {
-                svc.getPlayer().stop();
-                svc.getPlayer().clearMediaItems();
+                svc.getPlayer().pause();
             }
             Intent intent = new Intent(getContext(), PlaybackService.class);
             getContext().stopService(intent);
