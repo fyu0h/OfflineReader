@@ -1,12 +1,16 @@
 package com.audiobook.offline;
 
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.util.Base64;
 
+import androidx.activity.result.ActivityResult;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.PlaybackParameters;
@@ -17,6 +21,7 @@ import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import org.json.JSONException;
@@ -325,5 +330,65 @@ public class MediaControlPlugin extends Plugin {
             getContext().stopService(intent);
             call.resolve();
         });
+    }
+
+    @PluginMethod
+    public void isIgnoringBatteryOptimizations(PluginCall call) {
+        boolean isIgnoring = false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                isIgnoring = pm.isIgnoringBatteryOptimizations(getContext().getPackageName());
+            }
+        } else {
+            // Below M, there is no such rigorous optimization, assume effectively true
+            isIgnoring = true;
+        }
+        JSObject ret = new JSObject();
+        ret.put("isIgnoring", isIgnoring);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void requestIgnoreBatteryOptimizations(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                PowerManager pm = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+                if (pm != null && pm.isIgnoringBatteryOptimizations(getContext().getPackageName())) {
+                    // Already ignoring, return true immediately
+                    JSObject ret = new JSObject();
+                    ret.put("isIgnoring", true);
+                    call.resolve(ret);
+                    return;
+                }
+
+                Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+                startActivityForResult(call, intent, "batteryOptResult");
+            } catch (Exception e) {
+                call.reject("Failed to request battery optimization ignore", e);
+            }
+        } else {
+            JSObject ret = new JSObject();
+            ret.put("isIgnoring", true);
+            call.resolve(ret);
+        }
+    }
+
+    @ActivityCallback
+    private void batteryOptResult(PluginCall call, ActivityResult result) {
+        if (call == null) {
+            return;
+        }
+        boolean isIgnoring = false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                isIgnoring = pm.isIgnoringBatteryOptimizations(getContext().getPackageName());
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("isIgnoring", isIgnoring);
+        call.resolve(ret);
     }
 }

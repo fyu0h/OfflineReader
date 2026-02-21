@@ -22,6 +22,8 @@ interface MediaControlPlugin {
   seekToChapter(opts: { index: number }): Promise<void>;
   getState(): Promise<{ isPlaying: boolean; position: number; duration: number; index: number }>;
   stopService(): Promise<void>;
+  isIgnoringBatteryOptimizations(): Promise<{ isIgnoring: boolean }>;
+  requestIgnoreBatteryOptimizations(): Promise<{ isIgnoring: boolean }>;
   addListener(event: string, fn: (data: any) => void): Promise<PluginListenerHandle>;
 }
 
@@ -501,6 +503,26 @@ class AudioPlayer {
       MediaControl.setVolumeNormalization({ enabled });
     }
     this.notify();
+  }
+
+  async isIgnoringBatteryOptimizations(): Promise<boolean> {
+    if (isNative && MediaControl) {
+      try {
+        const res = await MediaControl.isIgnoringBatteryOptimizations();
+        return res.isIgnoring;
+      } catch { return true; }
+    }
+    return true;
+  }
+
+  async requestIgnoreBatteryOptimizations(): Promise<boolean> {
+    if (isNative && MediaControl) {
+      try {
+        const res = await MediaControl.requestIgnoreBatteryOptimizations();
+        return res.isIgnoring;
+      } catch { return true; }
+    }
+    return true;
   }
 
   setOnChapterEnd(fn: () => void) { this._onChapterEnd = fn; }

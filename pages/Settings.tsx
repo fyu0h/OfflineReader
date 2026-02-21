@@ -2,14 +2,17 @@ import React, { useContext, useState, useEffect } from 'react';
 import { ThemeContext } from '../App';
 import { useAppActions } from '../contexts/AppContext';
 import { formatFileSize } from '../types';
+import { audioPlayer } from '../services/audioPlayer';
 
 const Settings: React.FC = () => {
   const { isDark, themeMode, setThemeMode, toggleTheme } = useContext(ThemeContext);
   const actions = useAppActions();
   const [storageUsed, setStorageUsed] = useState(0);
+  const [isIgnoringBatteryOpt, setIsIgnoringBatteryOpt] = useState(true);
 
   useEffect(() => {
     actions.getStorageUsage().then(setStorageUsed);
+    audioPlayer.isIgnoringBatteryOptimizations().then(setIsIgnoringBatteryOpt);
   }, []);
 
   const handleClearData = async () => {
@@ -24,6 +27,15 @@ const Settings: React.FC = () => {
       setThemeMode(isDark ? 'dark' : 'light');
     } else {
       setThemeMode('system');
+    }
+  };
+
+  const handleBatteryOpt = async () => {
+    if (!isIgnoringBatteryOpt) {
+      if (window.confirm('为了保证有声书在后台或息屏播放时不被系统杀后台停播，请允许本应用忽略电池优化。\n\n这将在后续弹出的系统面板中要求您点击【允许】。')) {
+        const res = await audioPlayer.requestIgnoreBatteryOptimizations();
+        setIsIgnoringBatteryOpt(res);
+      }
     }
   };
 
@@ -94,6 +106,30 @@ const Settings: React.FC = () => {
             </div>
           </section>
 
+          {/* System Permissions */}
+          <section>
+            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-1">系统权限</h2>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700/50 divide-y divide-slate-100 dark:divide-slate-700/50">
+              <div className="w-full flex items-center justify-between p-4 cursor-pointer" onClick={handleBatteryOpt}>
+                <div className="flex items-center">
+                  <div className={`w-8 h-8 rounded-lg ${isIgnoringBatteryOpt ? 'bg-green-100 dark:bg-green-900/20 text-green-500' : 'bg-orange-100 dark:bg-orange-900/20 text-orange-500'} flex items-center justify-center mr-3`}>
+                    <span className="material-symbols-outlined text-xl">battery_saver</span>
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="font-medium text-sm dark:text-slate-200">后台播放保护</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">防止息屏时被系统强杀停播</span>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isIgnoringBatteryOpt ? 'bg-green-100 text-green-600 dark:bg-green-900/30' : 'bg-orange-100 text-orange-600 dark:bg-orange-900/30'}`}>
+                    {isIgnoringBatteryOpt ? '已保护' : '去设置'}
+                  </span>
+                  {!isIgnoringBatteryOpt && <span className="material-symbols-outlined text-slate-400 ml-1 text-sm">chevron_right</span>}
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* About */}
           <section>
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-1">关于</h2>
@@ -106,12 +142,12 @@ const Settings: React.FC = () => {
                   <span className="font-medium text-sm dark:text-slate-200">离线听书</span>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400">纯本地离线有声书播放器</p>
                 </div>
-                <span className="text-xs bg-primary/10 dark:bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">v1.0.34</span>
+                <span className="text-xs bg-primary/10 dark:bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">v1.0.35</span>
               </div>
             </div>
           </section>
         </div>
-        <p className="text-center text-slate-400 text-[10px] mt-12 mb-12">离线听书 v1.0.34</p>
+        <p className="text-center text-slate-400 text-[10px] mt-12 mb-12">离线听书 v1.0.35</p>
       </main>
     </div>
   );
